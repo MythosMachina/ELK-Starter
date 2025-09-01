@@ -1,0 +1,20 @@
+cluster.name: docker-cluster
+node.name: es01
+discovery.type: single-node
+
+# Logging-Tuning (optional)
+logger.level: info
+
+# Achtung: Dieses Setup nutzt HTTP ohne TLS (nur Dev!)
+xpack.security.enabled: true
+xpack.security.http.ssl:
+  enabled: false
+xpack.security.transport.ssl:
+  enabled: false
+
+path:
+  data: /usr/share/elasticsearch/data
+  logs: /usr/share/elasticsearch/logs
+
+# Für Docker-Umgebungen üblich:
+network.host: 0.0.0.0
