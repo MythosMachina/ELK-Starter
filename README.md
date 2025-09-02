@@ -25,6 +25,10 @@ Für eine erste Überprüfung:
 curl -s -u elastic:$ELASTIC_PASSWORD http://localhost:9200 | jq .
 ```
 
+Das `start.sh`-Skript entfernt vor dem Start automatisch einen eventuell
+vorhandenen `KIBANA_SERVICE_TOKEN` aus der `.env`-Datei und erstellt einen
+neuen Service-Token, um Probleme mit bereits existierenden Tokens zu vermeiden.
+
 ## Elastic Agent installieren
 
 Das Repository enthält Skripte zur Installation eines Elastic Agents, der sich automatisch beim mitgelieferten Fleet Server anmeldet.
