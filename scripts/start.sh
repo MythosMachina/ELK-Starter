@@ -21,7 +21,8 @@ echo "[3/3] Create Kibana service account token"
 TOKEN=$(docker exec es01 bin/elasticsearch-service-tokens create elastic/kibana kibana | tail -n 1)
 
 if grep -q '^KIBANA_SERVICE_TOKEN=' .env; then
-  sed -i "s/^KIBANA_SERVICE_TOKEN=.*/KIBANA_SERVICE_TOKEN=$TOKEN/" .env
+  # Use '|' as sed delimiter to avoid conflicts with '/' in the token
+  sed -i "s|^KIBANA_SERVICE_TOKEN=.*|KIBANA_SERVICE_TOKEN=$TOKEN|" .env
 else
   echo "KIBANA_SERVICE_TOKEN=$TOKEN" >> .env
 fi
