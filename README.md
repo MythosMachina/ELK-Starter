@@ -9,8 +9,8 @@ Dieses Repository enthält ein Docker-Compose-Setup für einen einzelnen Elastic
 # Provisionierung (Docker & Kernel-Tuning)
 sudo bash scripts/provision.sh
 
-# Stack starten
-docker compose up -d
+# Stack starten (Elasticsearch + Token + Kibana + Fleet)
+bash scripts/start.sh
 ```
 
 Danach stehen die Dienste unter den folgenden Ports zur Verfügung:
