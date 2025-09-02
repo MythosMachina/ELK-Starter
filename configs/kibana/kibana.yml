@@ -4,7 +4,7 @@ server.publicBaseUrl: ${SERVER_PUBLICBASEURL:http://localhost:5601}
 # Verbindung zu ES (hier via Superuser – für Produktion separat absichern!)
 elasticsearch.hosts: ["http://es01:9200"]
 elasticsearch.username: ${ELASTICSEARCH_USERNAME:elastic}
-elasticsearch.password: ${ELASTIC_PASSWORD}
+elasticsearch.password: ${ELASTICSEARCH_PASSWORD}
 
 # File-Logging aktivieren (statt nur stdout)
 logging:
