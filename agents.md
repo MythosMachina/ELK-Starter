@@ -192,7 +192,8 @@ services:
       - "8220:8220"
     volumes:
       # Persistente Agent-/Fleet-Server-Daten & -Logs
-      - /mnt/elastic_logs/fleet-server/agent:/usr/share/elastic-agent
+      # Nur das Datenverzeichnis mounten, damit die Binärdateien des Elastic Agents im Container verbleiben
+      - /mnt/elastic_logs/fleet-server/agent:/usr/share/elastic-agent/data
       - /mnt/elastic_logs/fleet-server/logs:/var/log/elastic-agent
     networks:
       - elk-net
