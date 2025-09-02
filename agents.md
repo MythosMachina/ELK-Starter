@@ -253,7 +253,6 @@ logging:
     level: info
     appenders: [file]
 
-xpack.security.enabled: true
 ```
 
 ---
