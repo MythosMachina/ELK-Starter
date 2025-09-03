@@ -19,8 +19,15 @@ grep -Ev '^KIBANA_SERVICE_TOKEN=' "${ENV_FILE}" | \
 mv "${ENV_FILE}.tmp" "${ENV_FILE}"
 
 set -a
-source "${ENV_FILE}"
+ # shellcheck source=/dev/null
+ source "${ENV_FILE}"
 set +a
+
+# Ensure certificate files are readable inside the container
+if [[ -d certs ]]; then
+  find certs -type f -name '*.key' -exec chown root:root {} \; -exec chmod 660 {} \;
+  find certs -type f -name '*.crt' -exec chown root:root {} \; -exec chmod 644 {} \;
+fi
 
 echo "[1/3] Start Elasticsearch"
 docker compose up -d es01
