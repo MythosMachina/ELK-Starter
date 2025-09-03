@@ -13,7 +13,7 @@ if (-not $AgentVersion) {
 }
 
 if (-not $FleetUrl) {
-    $FleetUrl = 'http://localhost:8220'
+    $FleetUrl = 'https://localhost:8220'
 }
 
 $Zip = "elastic-agent-$AgentVersion-windows-x86_64.zip"
@@ -28,6 +28,6 @@ Start-Process .\elastic-agent.exe -ArgumentList @(
     'install',
     '--url', $FleetUrl,
     '--enrollment-token', $EnrollmentToken,
-    '--insecure',
+    '--certificate-authorities', '..\certs\ca.crt',
     '-b'
 ) -Wait -NoNewWindow
