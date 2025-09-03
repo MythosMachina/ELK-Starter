@@ -94,8 +94,6 @@ services:
     restart: unless-stopped
     depends_on:
       - es01
-      - kibana
-      - fleet-server
     ports:
       - "80:80"
       - "443:443"
