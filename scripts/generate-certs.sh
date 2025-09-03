@@ -13,16 +13,18 @@ fi
 
 generate_cert() {
   local name="$1"
+  local san="${2:-DNS:${name}}"
   openssl req -newkey rsa:4096 -nodes \
     -keyout "$CERT_DIR/${name}.key" -out "$CERT_DIR/${name}.csr" \
-    -subj "/CN=${name}" -addext "subjectAltName=DNS:${name}"
+    -subj "/CN=${name}" -addext "subjectAltName=${san}"
   openssl x509 -req -in "$CERT_DIR/${name}.csr" -CA "$CERT_DIR/ca.crt" \
     -CAkey "$CERT_DIR/ca.key" -CAcreateserial \
     -out "$CERT_DIR/${name}.crt" -days 365 -sha256
   rm "$CERT_DIR/${name}.csr"
 }
 
-generate_cert es01
+# Include localhost as an additional Subject Alternative Name for Elasticsearch
+generate_cert es01 "DNS:es01,DNS:localhost"
 generate_cert kibana
 generate_cert fleet-server
 
