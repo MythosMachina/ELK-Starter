@@ -101,8 +101,6 @@ ES_JAVA_OPTS=-Xms1g -Xmx1g
 ### 2) `docker-compose.yml`
 
 ```yaml
-version: "3.9"
-
 name: elk-stack
 
 networks:
@@ -192,7 +190,8 @@ services:
       - "8220:8220"
     volumes:
       # Persistente Agent-/Fleet-Server-Daten & -Logs
-      # Nur das Datenverzeichnis mounten, damit die Binärdateien des Elastic Agents im Container verbleiben
+      # Wichtig: Nur das Datenverzeichnis mounten – ein Bind auf /usr/share/elastic-agent
+      # würde das Agent-Binary überschreiben und der Container könnte nicht starten.
       - /mnt/elastic_logs/fleet-server/agent:/usr/share/elastic-agent/data
       - /mnt/elastic_logs/fleet-server/logs:/var/log/elastic-agent
     networks:
