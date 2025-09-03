@@ -29,8 +29,8 @@ if [[ -d certs ]]; then
   find certs -type f -name '*.crt' -exec chown root:root {} \; -exec chmod 644 {} \;
 fi
 
-echo "[1/3] Start Elasticsearch"
-docker compose up -d es01
+echo "[1/3] Start Elasticsearch and Caddy"
+docker compose up -d es01 caddy
 
 echo "[2/3] Waiting for Elasticsearch to respond"
 until docker exec es01 curl -s --cacert /usr/share/elasticsearch/config/certs/ca.crt \
