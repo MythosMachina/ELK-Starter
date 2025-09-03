@@ -11,7 +11,7 @@ Ein reproduzierbares, „einmal starten & läuft“-Setup für:
 * vordefiniertem **Docker Compose** + **Bridge-Network** (`elk-net`)
 * **automatischer Provisionierung** (Docker, Compose-Plugin, Kernel-Tuning)
 * **externe Persistenz** von **Config** und **Logs** unter `/mnt/elastic_logs/<container>`
-* **exponierten Ports**: `9200` (ES), `5601` (Kibana), `8220` (Fleet Server)
+* **exponierter Port**: `443` (HTTPS via Caddy)
 
 > Hinweise
 > • Das Setup ist bewusst „lab/dev-freundlich“ (HTTP ohne TLS). Für Produktion unbedingt TLS & Härtung aktivieren.
@@ -22,17 +22,16 @@ Ein reproduzierbares, „einmal starten & läuft“-Setup für:
 ## Topologie & Ports
 
 ```
-[Host]  ─ docker ─┬─ es01 (9200,9300)
-                  ├─ kibana (5601)
-                  └─ fleet-server (8220)
+[Host]  ─ docker ─┬─ caddy (443)
+                  ├─ es01
+                  ├─ kibana
+                  └─ fleet-server
         └ network: elk-net (bridge)
 ```
 
 Exposed nach außen:
 
-* `9200:9200` (Elasticsearch HTTP API)
-* `5601:5601` (Kibana UI)
-* `8220:8220` (Fleet Server für Agent-Enrollments)
+* `443:443` (HTTPS über Caddy)
 
 ---
 
@@ -71,8 +70,8 @@ sudo bash scripts/provision.sh
 docker compose up -d
 
 # 5) Smoke-Tests
-curl -s -u elastic:$ELASTIC_PASSWORD http://localhost:9200 | jq .
-xdg-open http://localhost:5601  # (Linux Desktop) – sonst Browser aufrufen
+curl -s --cacert certs/ca.crt -u elastic:$ELASTIC_PASSWORD https://es.local | jq .
+xdg-open https://kibana.local  # (Linux Desktop) – sonst Browser aufrufen
 ```
 
 > Wichtiger Kernel-Tweak: `vm.max_map_count` muss **>= 262144** sein (Provisioning-Script setzt das). ([Elastic][2])
@@ -118,10 +117,8 @@ services:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - ES_JAVA_OPTS=${ES_JAVA_OPTS}
-      # Security an, HTTP ohne TLS (dev)
+      # Security an, TLS aktiviert
       - xpack.security.enabled=true
-      - xpack.security.http.ssl.enabled=false
-      - xpack.security.transport.ssl.enabled=false
       # Logs in Datei (wird gemountet)
       - path.logs=/usr/share/elasticsearch/logs
       # Benutzerpasswort (Superuser)
@@ -133,13 +130,11 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    ports:
-      - "9200:9200"
-      - "9300:9300"
     volumes:
       - /mnt/elastic_logs/elasticsearch/data:/usr/share/elasticsearch/data
       - /mnt/elastic_logs/elasticsearch/logs:/usr/share/elasticsearch/logs
       - ./configs/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - ./certs:/usr/share/elasticsearch/config/certs:ro
     networks:
       - elk-net
 
@@ -150,17 +145,14 @@ services:
     depends_on:
       - es01
     environment:
-      # Fürs Bootstrapping verwenden wir den elastic-User
-      - ELASTICSEARCH_HOSTS=http://es01:9200
-      - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+      - ELASTICSEARCH_HOSTS=https://es01:9200
+      - ELASTICSEARCH_SERVICEACCOUNTTOKEN=${KIBANA_SERVICE_TOKEN}
       # Optional: öffentlich erreichbare Basis-URL (für Links)
-      - SERVER_PUBLICBASEURL=${KIBANA_PUBLIC_URL:-http://localhost:5601}
-    ports:
-      - "5601:5601"
+      - SERVER_PUBLICBASEURL=${KIBANA_PUBLIC_URL:-https://kibana.local}
     volumes:
       - ./configs/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
       - /mnt/elastic_logs/kibana/logs:/usr/share/kibana/logs
+      - ./certs:/usr/share/kibana/config/certs:ro
     networks:
       - elk-net
 
@@ -172,28 +164,46 @@ services:
       - es01
       - kibana
     environment:
-      # Fleet Server aktivieren & an ES/Kibana koppeln (HTTP, ohne TLS)
+      # Fleet Server mit TLS an ES/Kibana koppeln
       - FLEET_SERVER_ENABLE=1
-      - FLEET_SERVER_ELASTICSEARCH_HOST=http://es01:9200
-      - FLEET_SERVER_INSECURE_HTTP=true
-      # (Ab neueren Releases erledigt Kibana die Fleet-Initialisierung selbst.
-      #  KIBANA_FLEET_SETUP kann i.d.R. entfallen.)
-      - KIBANA_HOST=http://kibana:5601
+      - FLEET_SERVER_ELASTICSEARCH_HOST=https://es01:9200
+      - FLEET_SERVER_ELASTICSEARCH_CA=/usr/share/elastic-agent/certs/ca.crt
+      - FLEET_SERVER_CERT=/usr/share/elastic-agent/certs/fleet-server.crt
+      - FLEET_SERVER_CERT_KEY=/usr/share/elastic-agent/certs/fleet-server.key
+      - KIBANA_HOST=https://kibana:5601
+      - KIBANA_CA=/usr/share/elastic-agent/certs/ca.crt
       - KIBANA_USERNAME=elastic
       - KIBANA_PASSWORD=${ELASTIC_PASSWORD}
       # Gemeinsame ES-Creds (werden auch vom Agent genutzt)
-      - ELASTICSEARCH_HOST=http://es01:9200
+      - ELASTICSEARCH_HOST=https://es01:9200
       - ELASTICSEARCH_USERNAME=elastic
       - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+      - ELASTICSEARCH_CA=/usr/share/elastic-agent/certs/ca.crt
       - LOG_LEVEL=info
-    ports:
-      - "8220:8220"
     volumes:
       # Persistente Agent-/Fleet-Server-Daten & -Logs
       # Wichtig: Nur das Datenverzeichnis mounten – ein Bind auf /usr/share/elastic-agent
       # würde das Agent-Binary überschreiben und der Container könnte nicht starten.
       - /mnt/elastic_logs/fleet-server/agent:/usr/share/elastic-agent/data
       - /mnt/elastic_logs/fleet-server/logs:/var/log/elastic-agent
+      - ./certs:/usr/share/elastic-agent/certs:ro
+    networks:
+      - elk-net
+
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    depends_on:
+      - es01
+      - kibana
+      - fleet-server
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./configs/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/etc/caddy/certs:ro
     networks:
       - elk-net
 ```
@@ -234,7 +244,7 @@ network.host: 0.0.0.0
 
 ```yaml
 server.host: 0.0.0.0
-server.publicBaseUrl: ${SERVER_PUBLICBASEURL:http://localhost:5601}
+server.publicBaseUrl: ${SERVER_PUBLICBASEURL:https://kibana.local}
 
 # Verbindung zu ES (hier via Superuser – für Produktion separat absichern!)
 elasticsearch.hosts: ["http://es01:9200"]
@@ -367,12 +377,12 @@ docker compose down
 
 ```bash
 # ES erreichbar?
-curl -s -u elastic:$ELASTIC_PASSWORD http://localhost:9200 | jq .
+curl -s --cacert certs/ca.crt -u elastic:$ELASTIC_PASSWORD https://es.local | jq .
 
-# Kibana im Browser: http://localhost:5601  (Login: elastic / $ELASTIC_PASSWORD)
+# Kibana im Browser: https://kibana.local  (Login: elastic / $ELASTIC_PASSWORD)
 
-# Fleet Server Port offen?
-nc -zv localhost 8220
+# Fleet Server erreichbar?
+curl -s --cacert certs/ca.crt https://fleet.local >/dev/null
 ```
 
 ### Logs & Konfiguration am Host
@@ -399,8 +409,8 @@ nc -zv localhost 8220
 
 * **ES startet nicht, „vm.max\_map\_count zu niedrig“** → Provisioning erneut laufen lassen oder `sudo sysctl -w vm.max_map_count=262144`. ([Elastic][2])
 * **Kibana „unavailable“** → Prüfe `docker compose logs kibana` & ES-Status (`curl /_cluster/health`).
-* **Fleet Server lauscht nicht extern** → Stelle sicher, dass Compose Port `8220:8220` mapped ist und keine FW blockt; in unserem Setup ist Binding 0.0.0.0 via Container-Defaults aktiv, HTTP unsicher ist explizit freigeschaltet (`FLEET_SERVER_INSECURE_HTTP=true`). Variablen-Referenzen: ([Elastic][1])
-* **Enrollments von Agents** → Agents gegen `http://<HOST-IP>:8220` anmelden (dev, ohne TLS mit `--insecure`). Fleet-URL findest du in Kibana → Fleet → Einstellungen.
+* **Fleet Server über Caddy erreichbar** → keine direkte Portweiterleitung erforderlich; Agents nutzen `https://fleet.local`.
+* **Enrollments von Agents** → Agents gegen `https://fleet.local` anmelden (CA `certs/ca.crt` verwenden). Fleet-URL findest du in Kibana → Fleet → Einstellungen.
 
 ---
 

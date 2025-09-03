@@ -16,16 +16,16 @@ bash scripts/generate-certs.sh
 bash scripts/start.sh
 ```
 
-Danach stehen die Dienste verschlüsselt unter den folgenden Ports zur Verfügung:
+Danach stehen die Dienste verschlüsselt über Caddy zur Verfügung:
 
-- Elasticsearch: https://localhost:9200
-- Kibana: https://localhost:5601
-- Fleet Server: https://localhost:8220
+- Elasticsearch: https://es.local
+- Kibana: https://kibana.local
+- Fleet Server: https://fleet.local
 
 Für eine erste Überprüfung:
 
 ```bash
-curl -s --cacert certs/ca.crt -u elastic:$ELASTIC_PASSWORD https://localhost:9200 | jq .
+curl -s --cacert certs/ca.crt -u elastic:$ELASTIC_PASSWORD https://es.local | jq .
 ```
 
 Das `start.sh`-Skript entfernt vor dem Start automatisch einen eventuell

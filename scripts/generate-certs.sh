@@ -27,6 +27,7 @@ generate_cert() {
 generate_cert es01 "DNS:es01,DNS:localhost"
 generate_cert kibana
 generate_cert fleet-server
+generate_cert caddy "DNS:es.local,DNS:kibana.local,DNS:fleet.local"
 
 rm -f "$CERT_DIR/ca.srl"
 
