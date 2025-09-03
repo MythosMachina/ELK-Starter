@@ -15,10 +15,8 @@ services:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - ES_JAVA_OPTS=${ES_JAVA_OPTS}
-      # Security an, HTTP ohne TLS (dev)
+      # Security an, TLS aktiviert
       - xpack.security.enabled=true
-      - xpack.security.http.ssl.enabled=false
-      - xpack.security.transport.ssl.enabled=false
       # Logs in Datei (wird gemountet)
       - path.logs=/usr/share/elasticsearch/logs
       # Benutzerpasswort (Superuser)
@@ -37,6 +35,7 @@ services:
       - /mnt/elastic_logs/elasticsearch/data:/usr/share/elasticsearch/data
       - /mnt/elastic_logs/elasticsearch/logs:/usr/share/elasticsearch/logs
       - ./configs/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - ./certs:/usr/share/elasticsearch/config/certs:ro
     networks:
       - elk-net
 
@@ -47,15 +46,16 @@ services:
     depends_on:
       - es01
     environment:
-      - ELASTICSEARCH_HOSTS=http://es01:9200
+      - ELASTICSEARCH_HOSTS=https://es01:9200
       - ELASTICSEARCH_SERVICEACCOUNTTOKEN=${KIBANA_SERVICE_TOKEN}
       # Optional: öffentlich erreichbare Basis-URL (für Links)
-      - SERVER_PUBLICBASEURL=${KIBANA_PUBLIC_URL:-http://localhost:5601}
+      - SERVER_PUBLICBASEURL=${KIBANA_PUBLIC_URL:-https://localhost:5601}
     ports:
       - "5601:5601"
     volumes:
       - ./configs/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
       - /mnt/elastic_logs/kibana/logs:/usr/share/kibana/logs
+      - ./certs:/usr/share/kibana/config/certs:ro
     networks:
       - elk-net
 
@@ -67,19 +67,21 @@ services:
       - es01
       - kibana
     environment:
-      # Fleet Server aktivieren & an ES/Kibana koppeln (HTTP, ohne TLS)
+      # Fleet Server mit TLS an ES/Kibana koppeln
       - FLEET_SERVER_ENABLE=1
-      - FLEET_SERVER_ELASTICSEARCH_HOST=http://es01:9200
-      - FLEET_SERVER_INSECURE_HTTP=true
-      # (Ab neueren Releases erledigt Kibana die Fleet-Initialisierung selbst.
-      #  KIBANA_FLEET_SETUP kann i.d.R. entfallen.)
-      - KIBANA_HOST=http://kibana:5601
+      - FLEET_SERVER_ELASTICSEARCH_HOST=https://es01:9200
+      - FLEET_SERVER_ELASTICSEARCH_CA=/usr/share/elastic-agent/certs/ca.crt
+      - FLEET_SERVER_CERT=/usr/share/elastic-agent/certs/fleet-server.crt
+      - FLEET_SERVER_CERT_KEY=/usr/share/elastic-agent/certs/fleet-server.key
+      - KIBANA_HOST=https://kibana:5601
+      - KIBANA_CA=/usr/share/elastic-agent/certs/ca.crt
       - KIBANA_USERNAME=elastic
       - KIBANA_PASSWORD=${ELASTIC_PASSWORD}
       # Gemeinsame ES-Creds (werden auch vom Agent genutzt)
-      - ELASTICSEARCH_HOST=http://es01:9200
+      - ELASTICSEARCH_HOST=https://es01:9200
       - ELASTICSEARCH_USERNAME=elastic
       - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+      - ELASTICSEARCH_CA=/usr/share/elastic-agent/certs/ca.crt
       - LOG_LEVEL=info
     ports:
       - "8220:8220"
@@ -89,5 +91,6 @@ services:
       # würde das Agent-Binary überschreiben und der Container könnte nicht starten.
       - /mnt/elastic_logs/fleet-server/agent:/usr/share/elastic-agent/data
       - /mnt/elastic_logs/fleet-server/logs:/var/log/elastic-agent
+      - ./certs:/usr/share/elastic-agent/certs:ro
     networks:
       - elk-net
