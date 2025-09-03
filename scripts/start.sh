@@ -33,7 +33,8 @@ echo "[1/3] Start Elasticsearch"
 docker compose up -d es01
 
 echo "[2/3] Waiting for Elasticsearch to respond"
-until curl -s --cacert certs/ca.crt -u elastic:"$ELASTIC_PASSWORD" https://localhost:9200 >/dev/null 2>&1; do
+until curl -s --cacert certs/ca.crt --resolve es01:9200:127.0.0.1 \
+    -u elastic:"$ELASTIC_PASSWORD" https://es01:9200 >/dev/null 2>&1; do
   sleep 2
 done
 
