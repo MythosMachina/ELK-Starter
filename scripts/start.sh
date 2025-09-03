@@ -6,11 +6,21 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-# Load environment variables
-source .env
+# Clean and load environment variables
+ENV_FILE="${ROOT_DIR}/.env"
+if [[ ! -f "${ENV_FILE}" ]]; then
+  echo ".env file is missing" >&2
+  exit 1
+fi
 
-# Remove any stale Kibana service token from previous runs
-sed -i '/^KIBANA_SERVICE_TOKEN=/d' .env
+# Remove existing Kibana service token and any stray lines
+grep -Ev '^KIBANA_SERVICE_TOKEN=' "${ENV_FILE}" | \
+  grep -E '^[A-Za-z_][A-Za-z0-9_]*=.*|^#|^$' > "${ENV_FILE}.tmp"
+mv "${ENV_FILE}.tmp" "${ENV_FILE}"
+
+set -a
+source "${ENV_FILE}"
+set +a
 
 echo "[1/3] Start Elasticsearch"
 docker compose up -d es01
@@ -24,7 +34,7 @@ echo "[3/3] Refresh Kibana service account token"
 # Delete existing token if present to avoid 'token already exists' errors
 docker exec es01 bin/elasticsearch-service-tokens delete elastic/kibana kibana >/dev/null 2>&1 || true
 TOKEN=$(docker exec es01 bin/elasticsearch-service-tokens create elastic/kibana kibana | tail -n 1)
-echo "KIBANA_SERVICE_TOKEN=$TOKEN" >> .env
+printf '\nKIBANA_SERVICE_TOKEN=%s\n' "$TOKEN" >> "$ENV_FILE"
 
 export KIBANA_SERVICE_TOKEN="$TOKEN"
 docker compose up -d
