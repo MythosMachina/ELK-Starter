@@ -13,7 +13,7 @@ if (-not $AgentVersion) {
 }
 
 if (-not $FleetUrl) {
-    $FleetUrl = 'https://localhost:8220'
+    $FleetUrl = 'https://fleet.local'
 }
 
 $Zip = "elastic-agent-$AgentVersion-windows-x86_64.zip"

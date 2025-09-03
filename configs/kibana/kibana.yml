@@ -1,5 +1,5 @@
 server.host: 0.0.0.0
-server.publicBaseUrl: ${SERVER_PUBLICBASEURL:https://localhost:5601}
+server.publicBaseUrl: ${SERVER_PUBLICBASEURL:https://kibana.local}
 server.ssl.enabled: true
 server.ssl.certificate: /usr/share/kibana/config/certs/kibana.crt
 server.ssl.key: /usr/share/kibana/config/certs/kibana.key

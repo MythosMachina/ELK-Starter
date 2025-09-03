@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Elastic Agent version to install. Defaults to STACK_VERSION from .env or 8.16.3.
 AGENT_VERSION="${AGENT_VERSION:-${STACK_VERSION:-8.16.3}}"
-FLEET_URL="${FLEET_URL:-https://localhost:8220}"
+FLEET_URL="${FLEET_URL:-https://fleet.local}"
 
 if [[ -z "${ENROLLMENT_TOKEN:-}" ]]; then
   echo "ENROLLMENT_TOKEN environment variable must be set" >&2
