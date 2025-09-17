@@ -1,8 +1,42 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CERT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../certs" && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE="${ROOT_DIR}/.env"
+CERT_DIR="${ROOT_DIR}/certs"
 mkdir -p "$CERT_DIR"
+
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "$ENV_FILE"
+  set +a
+fi
+
+extract_host() {
+  local url="$1"
+  url="${url#http://}"
+  url="${url#https://}"
+  echo "${url%%/*}"
+}
+
+if [[ -n "${ELASTICSEARCH_PUBLIC_URL:-}" ]]; then
+  ELASTICSEARCH_PUBLIC_HOST="$(extract_host "$ELASTICSEARCH_PUBLIC_URL")"
+else
+  ELASTICSEARCH_PUBLIC_HOST="es.local"
+fi
+
+if [[ -n "${KIBANA_PUBLIC_URL:-}" ]]; then
+  KIBANA_PUBLIC_HOST="$(extract_host "$KIBANA_PUBLIC_URL")"
+else
+  KIBANA_PUBLIC_HOST="kibana.local"
+fi
+
+if [[ -n "${FLEET_PUBLIC_URL:-}" ]]; then
+  FLEET_PUBLIC_HOST="$(extract_host "$FLEET_PUBLIC_URL")"
+else
+  FLEET_PUBLIC_HOST="fleet.local"
+fi
 
 # Generate Certificate Authority if not existing
 if [[ ! -f "$CERT_DIR/ca.crt" ]]; then
@@ -27,7 +61,7 @@ generate_cert() {
 generate_cert es01 "DNS:es01,DNS:localhost"
 generate_cert kibana
 generate_cert fleet-server
-generate_cert caddy "DNS:es.local,DNS:kibana.local,DNS:fleet.local"
+generate_cert caddy "DNS:${ELASTICSEARCH_PUBLIC_HOST},DNS:${KIBANA_PUBLIC_HOST},DNS:${FLEET_PUBLIC_HOST}"
 
 rm -f "$CERT_DIR/ca.srl"
 

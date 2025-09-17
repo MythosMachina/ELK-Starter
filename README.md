@@ -16,6 +16,21 @@ bash scripts/generate-certs.sh
 bash scripts/start.sh
 ```
 
+Alternativ kann das interaktive Menü `scripts/setup.sh` genutzt werden, um
+die wichtigsten Schritte komfortabel auszuführen:
+
+```bash
+bash scripts/setup.sh
+```
+
+Das Menü bietet u. a. folgende Optionen:
+
+- **Setup Environments** – anpassen der FQDNs/Domains
+- **Setup Directories** – Kopie des Repos nach `/opt/ELK` plus Persistenzpfade
+- **Setup Dependencies** – Ausführen von `provision.sh`
+- **Rollback** – Container stoppen und optional Daten löschen
+- **Display URLs & Secrets** – Anzeige der wichtigsten Endpunkte und Secrets
+
 Danach stehen die Dienste verschlüsselt über Caddy zur Verfügung:
 
 - Elasticsearch: https://es.local
