@@ -111,7 +111,8 @@ pairs = list(zip(args[::2], args[1::2]))
 content = path.read_text()
 for old, new in pairs:
     pattern = re.compile(rf'(?m)^{re.escape(old)}\s*{')
-    content = pattern.sub(f"{new} {{", content, count=1)
+    replacement = f"{new} " + "{"
+    content = pattern.sub(replacement, content, count=1)
 path.write_text(content)
 PYTHON
 }
