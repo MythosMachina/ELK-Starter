@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2024 Mythos Machina
+Copyright (c) 2025 Mythos Machina
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,3 +26,6 @@ Elasticsearch, Kibana, and Logstash distributions. These components are not
 licensed under MIT. They are provided under the Elastic License 2.0 or Apache
 2.0 (depending on version). For details, see:
 https://www.elastic.co/licensing/elastic-license
+
+These components are downloaded directly from the official Elastic repositories.
+This project does not redistribute them.
