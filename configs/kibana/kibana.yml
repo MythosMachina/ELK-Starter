@@ -1,3 +1,4 @@
+---
 server.host: 0.0.0.0
 server.publicBaseUrl: ${SERVER_PUBLICBASEURL:https://kibana.local}
 server.ssl.enabled: true
@@ -5,9 +6,11 @@ server.ssl.certificate: /usr/share/kibana/config/certs/kibana.crt
 server.ssl.key: /usr/share/kibana/config/certs/kibana.key
 
 # Verbindung zu ES über Service-Account-Token
-elasticsearch.hosts: ["https://es01:9200"]
+elasticsearch.hosts:
+  - "https://es01:9200"
 elasticsearch.serviceAccountToken: ${ELASTICSEARCH_SERVICEACCOUNTTOKEN}
-elasticsearch.ssl.certificateAuthorities: ["/usr/share/kibana/config/certs/ca.crt"]
+elasticsearch.ssl.certificateAuthorities:
+  - "/usr/share/kibana/config/certs/ca.crt"
 elasticsearch.ssl.verificationMode: certificate
 
 # File-Logging aktivieren (statt nur stdout)
@@ -20,4 +23,5 @@ logging:
         type: json
   root:
     level: info
-    appenders: [file]
+    appenders:
+      - file

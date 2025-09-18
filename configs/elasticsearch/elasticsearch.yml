@@ -1,3 +1,4 @@
+---
 cluster.name: docker-cluster
 node.name: es01
 discovery.type: single-node
@@ -11,13 +12,15 @@ xpack.security.http.ssl:
   enabled: true
   certificate: /usr/share/elasticsearch/config/certs/es01.crt
   key: /usr/share/elasticsearch/config/certs/es01.key
-  certificate_authorities: ["/usr/share/elasticsearch/config/certs/ca.crt"]
+  certificate_authorities:
+    - "/usr/share/elasticsearch/config/certs/ca.crt"
 xpack.security.transport.ssl:
   enabled: true
   verification_mode: certificate
   certificate: /usr/share/elasticsearch/config/certs/es01.crt
   key: /usr/share/elasticsearch/config/certs/es01.key
-  certificate_authorities: ["/usr/share/elasticsearch/config/certs/ca.crt"]
+  certificate_authorities:
+    - "/usr/share/elasticsearch/config/certs/ca.crt"
 
 path:
   data: /usr/share/elasticsearch/data
