@@ -1,38 +1,35 @@
 es.local {
     tls /etc/caddy/certs/caddy.crt /etc/caddy/certs/caddy.key
-    reverse_proxy {
-        to https://es01:9200
+    reverse_proxy https://es01:9200 {
+        header_up Host es01
         transport http {
             tls {
                 ca_cert /etc/caddy/certs/ca.crt
             }
         }
-        header_up Host es01
     }
 }
 
 kibana.local {
     tls /etc/caddy/certs/caddy.crt /etc/caddy/certs/caddy.key
-    reverse_proxy {
-        to https://kibana:5601
+    reverse_proxy https://kibana:5601 {
+        header_up Host kibana
         transport http {
             tls {
                 ca_cert /etc/caddy/certs/ca.crt
             }
         }
-        header_up Host kibana
     }
 }
 
 fleet.local {
     tls /etc/caddy/certs/caddy.crt /etc/caddy/certs/caddy.key
-    reverse_proxy {
-        to https://fleet-server:8220
+    reverse_proxy https://fleet-server:8220 {
+        header_up Host fleet-server
         transport http {
             tls {
                 ca_cert /etc/caddy/certs/ca.crt
             }
         }
-        header_up Host fleet-server
     }
 }
