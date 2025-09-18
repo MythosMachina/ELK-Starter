@@ -17,25 +17,65 @@ extract_host() {
   local url="$1"
   url="${url#http://}"
   url="${url#https://}"
-  echo "${url%%/*}"
+  url="${url%%/*}"
+  echo "${url%%:*}"
 }
 
-if [[ -n "${ELASTICSEARCH_PUBLIC_URL:-}" ]]; then
-  ELASTICSEARCH_PUBLIC_HOST="$(extract_host "$ELASTICSEARCH_PUBLIC_URL")"
-else
-  ELASTICSEARCH_PUBLIC_HOST="es.local"
-fi
+prompt_overwrite() {
+  shopt -s nullglob
+  local existing=("${CERT_DIR}"/*.crt "${CERT_DIR}"/*.key)
+  shopt -u nullglob
+  if (( ${#existing[@]} == 0 )); then
+    return 0
+  fi
 
-if [[ -n "${KIBANA_PUBLIC_URL:-}" ]]; then
-  KIBANA_PUBLIC_HOST="$(extract_host "$KIBANA_PUBLIC_URL")"
-else
-  KIBANA_PUBLIC_HOST="kibana.local"
-fi
+  echo "Es existieren bereits Zertifikate im Verzeichnis ${CERT_DIR}."
+  read -rp "Sollen sie neu erstellt werden? [y/N]: " answer
+  case "${answer}" in
+    [yY][eE][sS]|[yY])
+      rm -f "${CERT_DIR}"/*.crt "${CERT_DIR}"/*.key "${CERT_DIR}"/*.srl
+      ;;
+    *)
+      echo "Abgebrochen – vorhandene Zertifikate bleiben erhalten."
+      exit 0
+      ;;
+  esac
+}
 
-if [[ -n "${FLEET_PUBLIC_URL:-}" ]]; then
-  FLEET_PUBLIC_HOST="$(extract_host "$FLEET_PUBLIC_URL")"
-else
-  FLEET_PUBLIC_HOST="fleet.local"
+build_san() {
+  declare -A seen=()
+  for host in "$@"; do
+    [[ -z "${host}" ]] && continue
+    seen["${host}"]=1
+  done
+
+  local sorted_hosts=()
+  if ((${#seen[@]} > 0)); then
+    mapfile -t sorted_hosts < <(printf '%s\n' "${!seen[@]}" | sort)
+  fi
+
+  local entries=()
+  for host in "${sorted_hosts[@]}"; do
+    entries+=("DNS:${host}")
+  done
+
+  IFS=","; echo "${entries[*]}"; unset IFS
+}
+
+prompt_overwrite
+
+ELASTICSEARCH_PUBLIC_HOST="${ELASTICSEARCH_PUBLIC_URL:-https://es.local}"
+ELASTICSEARCH_PUBLIC_HOST="$(extract_host "$ELASTICSEARCH_PUBLIC_HOST")"
+
+KIBANA_PUBLIC_HOST="${KIBANA_PUBLIC_URL:-https://kibana.local}"
+KIBANA_PUBLIC_HOST="$(extract_host "$KIBANA_PUBLIC_HOST")"
+
+FLEET_PUBLIC_HOST="${FLEET_PUBLIC_URL:-https://fleet.local}"
+FLEET_PUBLIC_HOST="$(extract_host "$FLEET_PUBLIC_HOST")"
+
+FLEET_INTERNAL_HOST=""
+if [[ -n "${FLEET_URL:-}" ]]; then
+  FLEET_INTERNAL_HOST="$(extract_host "$FLEET_URL")"
 fi
 
 # Generate Certificate Authority if not existing
@@ -52,16 +92,16 @@ generate_cert() {
     -keyout "$CERT_DIR/${name}.key" -out "$CERT_DIR/${name}.csr" \
     -subj "/CN=${name}" -addext "subjectAltName=${san}"
   openssl x509 -req -in "$CERT_DIR/${name}.csr" -CA "$CERT_DIR/ca.crt" \
-    -CAkey "$CERT_DIR/ca.key" -CAcreateserial \
+    -CAkey "$CERT_DIR/ca.key" -CAcreateserial -copy_extensions copy \
     -out "$CERT_DIR/${name}.crt" -days 365 -sha256
   rm "$CERT_DIR/${name}.csr"
 }
 
 # Include localhost as an additional Subject Alternative Name for Elasticsearch
-generate_cert es01 "DNS:es01,DNS:localhost"
-generate_cert kibana
-generate_cert fleet-server
-generate_cert caddy "DNS:${ELASTICSEARCH_PUBLIC_HOST},DNS:${KIBANA_PUBLIC_HOST},DNS:${FLEET_PUBLIC_HOST}"
+generate_cert es01 "$(build_san es01 localhost "${ELASTICSEARCH_PUBLIC_HOST}")"
+generate_cert kibana "$(build_san kibana localhost "${KIBANA_PUBLIC_HOST}")"
+generate_cert fleet-server "$(build_san fleet-server localhost "${FLEET_PUBLIC_HOST}" "${FLEET_INTERNAL_HOST}")"
+generate_cert caddy "$(build_san caddy localhost "${ELASTICSEARCH_PUBLIC_HOST}" "${KIBANA_PUBLIC_HOST}" "${FLEET_PUBLIC_HOST}" es01 kibana fleet-server)"
 
 rm -f "$CERT_DIR/ca.srl"
 
