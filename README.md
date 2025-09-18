@@ -29,7 +29,7 @@ Dieses Repository liefert ein vorkonfiguriertes Docker-Compose-Stack für einen 
 | ✅ Feature | Beschreibung |
 | --- | --- |
 | **One-Command-Provisioning** | `scripts/provision.sh` kümmert sich um Docker, Kernel-Tuning (`vm.max_map_count`) und Verzeichnisstruktur. |
-| **Automatisierte Zertifikate** | `scripts/generate-certs.sh` erzeugt eine lokale CA inklusive Service-Zertifikate für `es.local`, `kibana.local` und `fleet.local`. |
+| **Automatisierte Zertifikate** | `scripts/generate-certs.sh` erzeugt eine lokale CA, übernimmt Domains aus `.env` sowie Container-Hostnamen in die SAN-Liste und warnt vor Überschreibungen bestehender Zertifikate. |
 | **Sicherer Fleet-Start** | `scripts/start.sh` startet Elasticsearch & Caddy, erstellt ein frisches Kibana-Service-Token und bringt Fleet/Kibana danach online. |
 | **Interactive Setup** | `scripts/setup.sh` vereint alle Schritte in einem Menü mit Rollback-, Secrets- und Directory-Optionen. |
 | **Fleet-Agent-Installer** | Skripte für Linux & Windows enrollen den Elastic Agent direkt gegen den mitgelieferten Fleet Server. |
@@ -83,6 +83,8 @@ graph LR
    ```bash
    bash scripts/generate-certs.sh
    ```
+   - Bezieht die öffentlichen URLs aus `.env` sowie die Container-Namen (`es01`, `kibana`, `fleet-server`, `caddy`) in jedes Zertifikat mit ein.
+   - Erkennt vorhandene Zertifikate und fragt nach, bevor Schlüssel oder CA ersetzt werden.
 
 4. **Stack starten** – Elasticsearch, Kibana, Fleet Server und Caddy werden hochgefahren.
    ```bash
