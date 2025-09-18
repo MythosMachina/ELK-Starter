@@ -1,3 +1,4 @@
+---
 name: elk-stack
 
 networks:
@@ -11,16 +12,16 @@ services:
     container_name: es01
     restart: unless-stopped
     environment:
-      - node.name=es01
-      - discovery.type=single-node
-      - bootstrap.memory_lock=true
-      - ES_JAVA_OPTS=${ES_JAVA_OPTS}
+      node.name: es01
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      ES_JAVA_OPTS: "${ES_JAVA_OPTS}"
       # Security an, TLS aktiviert
-      - xpack.security.enabled=true
+      xpack.security.enabled: "true"
       # Logs in Datei (wird gemountet)
-      - path.logs=/usr/share/elasticsearch/logs
+      path.logs: /usr/share/elasticsearch/logs
       # Benutzerpasswort (Superuser)
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      ELASTIC_PASSWORD: "${ELASTIC_PASSWORD}"
     ulimits:
       memlock:
         soft: -1
@@ -29,10 +30,20 @@ services:
         soft: 65536
         hard: 65536
     volumes:
-      - /mnt/elastic_logs/elasticsearch/data:/usr/share/elasticsearch/data
-      - /mnt/elastic_logs/elasticsearch/logs:/usr/share/elasticsearch/logs
-      - ./configs/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
-      - ./certs:/usr/share/elasticsearch/config/certs:ro
+      - type: bind
+        source: /mnt/elastic_logs/elasticsearch/data
+        target: /usr/share/elasticsearch/data
+      - type: bind
+        source: /mnt/elastic_logs/elasticsearch/logs
+        target: /usr/share/elasticsearch/logs
+      - type: bind
+        source: ./configs/elasticsearch/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+      - type: bind
+        source: ./certs
+        target: /usr/share/elasticsearch/config/certs
+        read_only: true
     networks:
       - elk-net
 
@@ -43,14 +54,22 @@ services:
     depends_on:
       - es01
     environment:
-      - ELASTICSEARCH_HOSTS=https://es01:9200
-      - ELASTICSEARCH_SERVICEACCOUNTTOKEN=${KIBANA_SERVICE_TOKEN}
+      ELASTICSEARCH_HOSTS: "https://es01:9200"
+      ELASTICSEARCH_SERVICEACCOUNTTOKEN: "${KIBANA_SERVICE_TOKEN}"
       # Optional: öffentlich erreichbare Basis-URL (für Links)
-      - SERVER_PUBLICBASEURL=${KIBANA_PUBLIC_URL:-https://kibana.local}
+      SERVER_PUBLICBASEURL: "${KIBANA_PUBLIC_URL:-https://kibana.local}"
     volumes:
-      - ./configs/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
-      - /mnt/elastic_logs/kibana/logs:/usr/share/kibana/logs
-      - ./certs:/usr/share/kibana/config/certs:ro
+      - type: bind
+        source: ./configs/kibana/kibana.yml
+        target: /usr/share/kibana/config/kibana.yml
+        read_only: true
+      - type: bind
+        source: /mnt/elastic_logs/kibana/logs
+        target: /usr/share/kibana/logs
+      - type: bind
+        source: ./certs
+        target: /usr/share/kibana/config/certs
+        read_only: true
     networks:
       - elk-net
 
@@ -63,28 +82,36 @@ services:
       - kibana
     environment:
       # Fleet Server mit TLS an ES/Kibana koppeln
-      - FLEET_SERVER_ENABLE=1
-      - FLEET_SERVER_ELASTICSEARCH_HOST=https://es01:9200
-      - FLEET_SERVER_ELASTICSEARCH_CA=/usr/share/elastic-agent/certs/ca.crt
-      - FLEET_SERVER_CERT=/usr/share/elastic-agent/certs/fleet-server.crt
-      - FLEET_SERVER_CERT_KEY=/usr/share/elastic-agent/certs/fleet-server.key
-      - KIBANA_HOST=https://kibana:5601
-      - KIBANA_CA=/usr/share/elastic-agent/certs/ca.crt
-      - KIBANA_USERNAME=elastic
-      - KIBANA_PASSWORD=${ELASTIC_PASSWORD}
+      FLEET_SERVER_ENABLE: "1"
+      FLEET_SERVER_ELASTICSEARCH_HOST: "https://es01:9200"
+      FLEET_SERVER_ELASTICSEARCH_CA: /usr/share/elastic-agent/certs/ca.crt
+      FLEET_SERVER_CERT: /usr/share/elastic-agent/certs/fleet-server.crt
+      FLEET_SERVER_CERT_KEY: /usr/share/elastic-agent/certs/fleet-server.key
+      KIBANA_HOST: "https://kibana:5601"
+      KIBANA_CA: /usr/share/elastic-agent/certs/ca.crt
+      KIBANA_USERNAME: elastic
+      KIBANA_PASSWORD: "${ELASTIC_PASSWORD}"
       # Gemeinsame ES-Creds (werden auch vom Agent genutzt)
-      - ELASTICSEARCH_HOST=https://es01:9200
-      - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
-      - ELASTICSEARCH_CA=/usr/share/elastic-agent/certs/ca.crt
-      - LOG_LEVEL=info
+      ELASTICSEARCH_HOST: "https://es01:9200"
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: "${ELASTIC_PASSWORD}"
+      ELASTICSEARCH_CA: /usr/share/elastic-agent/certs/ca.crt
+      LOG_LEVEL: info
     volumes:
       # Persistente Agent-/Fleet-Server-Daten & -Logs
-      # Wichtig: Nur das Datenverzeichnis mounten – ein Bind auf /usr/share/elastic-agent
-      # würde das Agent-Binary überschreiben und der Container könnte nicht starten.
-      - /mnt/elastic_logs/fleet-server/agent:/usr/share/elastic-agent/data
-      - /mnt/elastic_logs/fleet-server/logs:/var/log/elastic-agent
-      - ./certs:/usr/share/elastic-agent/certs:ro
+      # Wichtig: Nur das Datenverzeichnis mounten.
+      # Ein Bind auf /usr/share/elastic-agent überschreibt das Agent-Binary
+      # und verhindert den Start des Containers.
+      - type: bind
+        source: /mnt/elastic_logs/fleet-server/agent
+        target: /usr/share/elastic-agent/data
+      - type: bind
+        source: /mnt/elastic_logs/fleet-server/logs
+        target: /var/log/elastic-agent
+      - type: bind
+        source: ./certs
+        target: /usr/share/elastic-agent/certs
+        read_only: true
     networks:
       - elk-net
 
@@ -98,7 +125,13 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./configs/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./certs:/etc/caddy/certs:ro
+      - type: bind
+        source: ./configs/caddy/Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+      - type: bind
+        source: ./certs
+        target: /etc/caddy/certs
+        read_only: true
     networks:
       - elk-net
